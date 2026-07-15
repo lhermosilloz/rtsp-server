@@ -2,7 +2,29 @@
 #include "Config.hpp"
 #include <iostream>
 #include <filesystem>
+#include <optional>
 #include <toml.hpp>
+
+// toml++ only extracts a node whose stored type matches, so value_or<int>
+// silently returns the fallback for a quoted value (framerate = "30"). Accept
+// the integer and string forms; nullopt keeps the caller's default.
+static std::optional<int> parseInt(const toml::node_view<toml::node>& node)
+{
+	if (auto i = node.value<int64_t>()) {
+		return static_cast<int>(*i);
+	}
+
+	if (auto s = node.value<std::string>()) {
+		try {
+			return std::stoi(*s);
+
+		} catch (const std::exception&) {
+			return std::nullopt;
+		}
+	}
+
+	return std::nullopt;
+}
 
 int main(int argc, char** argv)
 {
@@ -77,12 +99,18 @@ int main(int argc, char** argv)
 			}
 
 			if (camera->contains("framerate")) {
-				config.camera.framerate = (*camera)["framerate"].value_or(15);
+				if (auto framerate = parseInt((*camera)["framerate"])) {
+					config.camera.framerate = *framerate;
+				}
+
 				std::cout << "Framerate set to: " << config.camera.framerate << std::endl;
 			}
 
 			if (camera->contains("bitrate")) {
-				config.camera.bitrate = (*camera)["bitrate"].value_or(2000);
+				if (auto bitrate = parseInt((*camera)["bitrate"])) {
+					config.camera.bitrate = *bitrate;
+				}
+
 				std::cout << "Bitrate set to: " << config.camera.bitrate << std::endl;
 			}
 
