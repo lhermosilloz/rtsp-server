@@ -214,6 +214,8 @@ int RtspServer::csi_sensor_id(const std::vector<VideoDevice>& devices, const std
 	return sensorId;
 }
 
+std::string RtspServer::get_libcamera_camera_index(const std::vector<VideoDevice>& devices, const std::optional<VideoDevice>& selected);
+
 std::string RtspServer::create_jetson_pipeline(int sensorId)
 {
 	std::stringstream ss;
