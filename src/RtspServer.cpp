@@ -214,7 +214,25 @@ int RtspServer::csi_sensor_id(const std::vector<VideoDevice>& devices, const std
 	return sensorId;
 }
 
-std::string RtspServer::get_libcamera_camera_index(const std::vector<VideoDevice>& devices, const std::optional<VideoDevice>& selected);
+std::string RtspServer::get_libcamera_camera_index(const std::vector<VideoDevice>& devices, const std::optional<VideoDevice>& selected)
+{
+	// On the Pi, /dev/video0-5 map to CSI sensor 0, /dev/video8-13 map to CSI sensor 1
+	// Infer index based on the /dev/videoN index
+	
+	if (!selected || selected->type != CameraType::Csi) {
+		return "";	// USB or auto select: then let the cam pick
+	}
+	
+	// Count how many CSI devices come before the selected one to determine camera index
+	int camera_index = 0;
+	for (const auto& d : devices) {
+		if (d.type == CameraType:Csi && d.index < selected->index) {
+			camera_index++;
+		}
+	}
+
+	return std::to_string(camera_index);
+}
 
 std::string RtspServer::create_jetson_pipeline(int sensorId)
 {
