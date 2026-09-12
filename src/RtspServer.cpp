@@ -178,7 +178,7 @@ std::string RtspServer::get_pipeline(Platform platform)
 			return create_usb_pipeline(selected->path);
 		}
 
-		return create_pi_pipeline();
+		return create_pi_pipeline(devices, selected);
 
 	case Platform::Ubuntu:
 
@@ -226,7 +226,7 @@ std::string RtspServer::get_libcamera_camera_index(const std::vector<VideoDevice
 	// Count how many CSI devices come before the selected one to determine camera index
 	int camera_index = 0;
 	for (const auto& d : devices) {
-		if (d.type == CameraType:Csi && d.index < selected->index) {
+		if (d.type == CameraType::Csi && d.index < selected->index) {
 			camera_index++;
 		}
 	}
@@ -319,7 +319,7 @@ std::string RtspServer::create_jetson_pipeline(int sensorId)
 	return ss.str();
 }
 
-std::string RtspServer::create_pi_pipeline()
+std::string RtspServer::create_pi_pipeline(const std::vector<VideoDevice>& devices, const std::optional<VideoDevice>& selected)
 {
 	std::stringstream ss;
 
@@ -329,11 +329,19 @@ std::string RtspServer::create_pi_pipeline()
 	// Cap framerate at 30fps
 	int framerate = std::min(_cameraConfig.framerate, 30);
 
+	// For CSI cameras, map the device to a libcamera camera index.
+	// libcamerasrc uses camera-index to select which cmaera from libcamera's enum
+	std::string camera_index = get_libcamera_camera_index(devices, selected);
+
 	// Start building the pipeline.
 	// format=NV12 is required: without an explicit format, libcamerasrc negotiates its
 	// src pad to the sensor's RAW Bayer stream (e.g. imx708 -> SBGGR16), which videoconvert
 	// cannot consume -> "not-negotiated". NV12 is the PiSP ISP's native processed output.
-	ss << "( libcamerasrc ! "
+	ss << "( libcamerasrc";
+	if (!camera_index.empty()) {
+		ss << " camera-index=" << camera_index;
+	}
+	ss << " ! "
 	   << "video/x-raw,format=NV12,width=" << width
 	   << ",height=" << height
 	   << ",framerate=" << framerate << "/1 ! "
