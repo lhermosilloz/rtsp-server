@@ -214,7 +214,7 @@ int RtspServer::csi_sensor_id(const std::vector<VideoDevice>& devices, const std
 	return sensorId;
 }
 
-std::string RtspServer::get_libcamera_camera_index(const std::vector<VideoDevice>& devices, const std::optional<VideoDevice>& selected)
+std::string RtspServer::get_libcamera_camera_name(const std::vector<VideoDevice>& devices, const std::optional<VideoDevice>& selected)
 {
 	// On the Pi, /dev/video0-5 map to CSI sensor 0, /dev/video8-13 map to CSI sensor 1
 	// Infer index based on the /dev/videoN index
@@ -224,14 +224,32 @@ std::string RtspServer::get_libcamera_camera_index(const std::vector<VideoDevice
 	}
 	
 	// Count how many CSI devices come before the selected one to determine camera index
-	int camera_index = 0;
-	for (const auto& d : devices) {
-		if (d.type == CameraType::Csi && d.index < selected->index) {
-			camera_index++;
-		}
+	//int camera_index = 0;
+	//for (const auto& d : devices) {
+	//	if (d.type == CameraType::Csi && d.index < selected->index) {
+	//		camera_index++;
+	//	}
+	//}
+
+	//return std::to_string(camera_index);
+
+	// Hardcoded:
+	
+	// Extract the video number from the device path
+	const std::string& path = selected->path;
+	size_t video_pos = path.find("video");
+
+	if (video_pos == std::string::npos) {
+		return ""; // Could not find video in path
 	}
 
-	return std::to_string(camera_index);
+	int video_num = std::stoi(path.substr(video_pos + 5));	// skip 'video'
+
+	if (video_num < 8) {
+		return "/base/axi/pcie@1000120000/rp1/i2c@88000/imx477@1a";
+	} else {
+		return "/base/axi/pcie@1000120000/rp1/i2c@70000/imx477@1a";
+	}
 }
 
 std::string RtspServer::create_jetson_pipeline(int sensorId)
@@ -331,15 +349,15 @@ std::string RtspServer::create_pi_pipeline(const std::vector<VideoDevice>& devic
 
 	// For CSI cameras, map the device to a libcamera camera index.
 	// libcamerasrc uses camera-index to select which cmaera from libcamera's enum
-	std::string camera_index = get_libcamera_camera_index(devices, selected);
+	std::string camera_name = get_libcamera_camera_name(devices, selected);
 
 	// Start building the pipeline.
 	// format=NV12 is required: without an explicit format, libcamerasrc negotiates its
 	// src pad to the sensor's RAW Bayer stream (e.g. imx708 -> SBGGR16), which videoconvert
 	// cannot consume -> "not-negotiated". NV12 is the PiSP ISP's native processed output.
 	ss << "( libcamerasrc";
-	if (!camera_index.empty()) {
-		ss << " camera-index=" << camera_index;
+	if (!camera_name.empty()) {
+		ss << " camera-name=\"" << camera_name << "\"";
 	}
 	ss << " ! "
 	   << "video/x-raw,format=NV12,width=" << width

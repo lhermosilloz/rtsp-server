@@ -31,9 +31,9 @@ private:
 	// nodes). Returns 0 when nothing CSI is selected.
 	static int csi_sensor_id(const std::vector<VideoDevice>& devices, const std::optional<VideoDevice>& selected);
 
-	// Map the selected CSI device to its libcamera camera index for libcamerasrc
-	// Returns camera index string ('0', '1', ...) or empty for auto-select
-	static std::string get_libcamera_camera_index(const std::vector<VideoDevice>& devices, const std::optional<VideoDevice>& selected);
+	// Map the selected CSI device to its libcamera camera name for libcamerasrc
+	// Returns camera name string ('0', '1', ...) or empty for auto-select
+	static std::string get_libcamera_camera_name(const std::vector<VideoDevice>& devices, const std::optional<VideoDevice>& selected);
 
 	std::string create_jetson_pipeline(int sensorId);
 	std::string create_pi_pipeline(const std::vector<VideoDevice>& devices, const std::optional<VideoDevice>& selected);
